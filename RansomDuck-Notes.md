@@ -102,10 +102,73 @@ canaries = ["invoice_Q2_2026.docx"]
 ### Known limitations
 - `/proc` attribution remains timing-sensitive (explained in the previous section).
 - The audit file is plain JSONL with no integrity checks yet.
-- Webhook/desktop notifications are not implemented yet.
+- ~~Webhook/desktop notifications are not implemented yet.~~ webhook done below.
 
 ### Next steps
-1. Add webhook or desktop notification on incident creation.
+1. ~~Add webhook or desktop notification on incident creation.~~ done below.
 2. Add a minimal Tauri tray GUI to show status and recent incidents.
 3. Begin the Windows process-attribution adapter (ETW / Handle info).
+
+---
+
+## 2026-06-15 — Webhook notifications on incident creation
+
+### Goal
+Send a real-time HTTP POST to a user-configurable URL every time an incident is created, so the agent can notify external services like Discord, Slack, ntfy.sh, or a custom server.
+
+### What changed
+1. **`crates/rd-audit/src/webhook.rs`** (new)
+   - Added `WebhookClient`, a thin synchronus HTTP wrapper around `ureq`.
+   - Added `WebhookPayload` serialisable to JSON; it contains source, timestamp, severity, score, level, process summary, and affected paths.
+   - Delivery is best-effort: errors are logged but never block detection.
+   - Unit test `payload_serialises_to_json` checks the JSON schema.
+
+2. **`crates/rd-audit/src/lib.rs`**
+   - Added `webhook_url` support to `AuditLogger` via `with_webhook()`.
+   - `log_incident()` now also forwards the incident to the webhook client.
+
+3. **`crates/rd-core/src/config.rs`**
+   - Added `webhook_url: Option<String>` to `Config`.
+   - Updated TOML tests for the new field.
+
+4. **`crates/rd-core/src/lib.rs`**
+   - Added `Agent::from_config()` as a single constructor that wires log dir, webhook, and cooldown from the config file.
+
+5. **`crates/rd-cli/src/main.rs`**
+   - Replaced manual agent setup with `Agent::from_config(&config)`.
+
+6. **`README.md`**
+   - Updated config example with a `webhook_url`.
+   - Documented the JSON payload schema.
+
+### How it works
+- When `log_incident()` is called, the `AuditLogger`:
+  1. writes the entry to tracing,
+  2. appends the entry to `audit.jsonl`,
+  3. serialises the incident into a `WebhookPayload`, and
+  4. POSTs it to the configured URL with a 5-second timeout.
+- If the POST fails, only a warning is emitted; detection and logging continue.
+
+### Configuration example
+```toml
+watch_path = "/tmp/rd-demo"
+log_dir = "/tmp/rd-demo/logs"
+webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
+cooldown_seconds = 5
+canaries = ["invoice_Q2_2026.docx"]
+```
+
+### Results
+- `cargo test` passes (10 tests).
+- Feature pushed to GitHub at `https://github.com/mazanivan/ransomduck`.
+
+### Known limitations
+- The webhook client is synchronous. If the endpoint is extremely slow, it can briefly delay the watcher thread. Later slices can move it to a background channel/worker.
+- There is no retry logic yet.
+- No built-in signature/authentication for verifying webhook origin.
+
+### Next steps
+1. Add a minimal Tauri tray GUI to show status and recent incidents.
+2. Begin the Windows process-attribution adapter (ETW / Handle info).
+3. Optional: add retry/backoff or async webhook queue.
 
