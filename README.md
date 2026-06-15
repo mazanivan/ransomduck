@@ -120,8 +120,6 @@ cargo test
 - **rd-cli:** `ransomduck` binary.
 - **rd-common:** shared data models.
 
-See [`RansomDuck-Design.md`](RansomDuck-Design.md) for the full design and threat model, and [`RansomDuck-Notes.md`](RansomDuck-Notes.md) for day-to-day development notes.
-
 ## Current limitations
 
 - Process attribution on Linux relies on scanning `/proc/*/fd`, which only works while the file is still open. Real, fast-closing ransomware is better attributed through `fanotify`/`auditd`/eBPF on Linux or ETW on Windows.
