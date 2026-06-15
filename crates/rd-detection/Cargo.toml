@@ -1,0 +1,10 @@
+[package]
+name = "rd-detection"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[dependencies]
+rd-common = { path = "../rd-common" }
+uuid = { workspace = true }

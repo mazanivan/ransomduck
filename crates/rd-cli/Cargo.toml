@@ -1,0 +1,19 @@
+[package]
+name = "rd-cli"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "ransomduck"
+path = "src/main.rs"
+
+[dependencies]
+rd-common = { path = "../rd-common" }
+rd-core = { path = "../rd-core" }
+rd-audit = { path = "../rd-audit" }
+rd-simulator = { path = "../rd-simulator" }
+clap = { workspace = true }
+tracing = { workspace = true }
+tracing-subscriber = { workspace = true }

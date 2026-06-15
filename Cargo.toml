@@ -1,0 +1,33 @@
+[workspace]
+members = [
+    "crates/rd-common",
+    "crates/rd-detection",
+    "crates/rd-audit",
+    "crates/rd-simulator",
+    "crates/rd-core",
+    "crates/rd-cli",
+]
+resolver = "3"
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+authors = ["RansomDuck Team"]
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/ransomduck/ransomduck"
+
+[workspace.dependencies]
+uuid = { version = "1.11", features = ["v4", "serde"] }
+chrono = { version = "0.4", features = ["serde"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+toml = "0.8"
+thiserror = "2.0"
+tracing = "0.1"
+tracing-subscriber = "0.3"
+notify = "7.0"
+directories = "5.0"
+clap = { version = "4.5", features = ["derive"] }
+rand = "0.8"
+sha2 = "0.10"
+tempfile = "3.14"
