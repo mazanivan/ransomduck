@@ -29,12 +29,12 @@ Create a minimal config file:
 # /tmp/rd-demo/ransomduck.toml
 watch_path = "/tmp/rd-demo"
 log_dir = "/tmp/rd-demo/logs"
-webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
+webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
 cooldown_seconds = 5
 canaries = ["invoice_Q2_2026.docx"]
 ```
 
-Replace `moj-ransomduck-r56x` with your own topic on ntfy.sh or use Discord/Slack/Telegram webhook URL.
+Replace `your-secret-topic-xyz` with your own topic on ntfy.sh or use Discord/Slack/Telegram webhook URL.
 
 Start the agent:
 
@@ -73,11 +73,11 @@ The agent sends the JSON above as a `POST` with `Content-Type: application/json`
 
 ### ntfy.sh (recommended — works without registration)
 
-1. Pick a unique topic name, e.g. `moj-ransomduck-r56x`.
-2. In your phone/browser subscribe to `https://ntfy.sh/moj-ransomduck-r56x`.
+1. Pick a unique topic name, e.g. `your-secret-topic-xyz`.
+2. In your phone/browser subscribe to `https://ntfy.sh/your-secret-topic-xyz`.
 3. Set in `ransomduck.toml`:
    ```toml
-   webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
+   webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
    ```
 4. Trigger an incident with `fake-ransomware`. The notification appears immediately.
 

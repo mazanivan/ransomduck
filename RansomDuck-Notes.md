@@ -1,5 +1,50 @@
 # RansomDuck — Development Notes
 
+## Session handoff — current state
+
+Use this section when picking up the project after a break. Below is the minimal context needed to continue.
+
+### What RansomDuck does today
+
+- Local canary detection on Linux via the `notify` crate.
+- Best-effort `/proc/*/fd` process attribution (Linux only; timing-sensitive).
+- Transparent scoring model with signals and response levels (`Monitor` / `Restrict` / `Contain`).
+- Append-only JSON Lines audit log.
+- Duplicate-suppression per `PID@path` with configurable cooldown.
+- TOML configuration: `watch_path`, `log_dir`, `webhook_url`, `cooldown_seconds`, `canaries`.
+- Webhook notifications on every incident (tested with ntfy.sh; works on phone).
+- GitHub repo at https://github.com/mazanivan/ransomduck.
+
+### Open decisions / next steps
+
+Choose one of these when the next session starts:
+
+1. **Tauri tray GUI** — system-tray application showing status and recent incidents.
+2. **Discord/Slack webhook adapters** — format payload for specific services instead of generic JSON.
+3. **Containment** — suspend or kill a suspicious process after detection.
+4. **Windows process attribution** — ETW/Handle-based PID attribution for the Windows adapter.
+5. **Repository cleanup** — decide whether to keep `RansomDuck-Design.md` and `RansomDuck-Notes.md` in repo root, move them to a `docs/` folder, or remove them from the public repository.
+
+### How to run the agent
+
+```bash
+cd /home/diego/Documents/Projects/interesting-ideas/ransomduck
+cargo build --release
+./target/release/ransomduck --config /path/to/ransomduck.toml
+```
+
+Example `ransomduck.toml`:
+
+```toml
+watch_path = "/tmp/rd-demo"
+log_dir = "/tmp/rd-demo/logs"
+webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
+cooldown_seconds = 5
+canaries = ["invoice_Q2_2026.docx"]
+```
+
+---
+
 ## 2026-06-15 — Real PID attribution on Linux via `/proc` scan
 
 ### Goal
@@ -153,7 +198,7 @@ Send a real-time HTTP POST to a user-configurable URL every time an incident is 
 ```toml
 watch_path = "/tmp/rd-demo"
 log_dir = "/tmp/rd-demo/logs"
-webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
+webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
 cooldown_seconds = 5
 canaries = ["invoice_Q2_2026.docx"]
 ```

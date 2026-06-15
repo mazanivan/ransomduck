@@ -96,7 +96,7 @@ mod tests {
             file,
             r#"watch_path = "/tmp/important"
 log_dir = "/var/log/ransomduck"
-webhook_url = "https://ntfy.sh/moj-ransomduck"
+webhook_url = "https://ntfy.sh/your-secret-topic"
 cooldown_seconds = 10
 canaries = ["salary_2026.xlsx", "budget.docx"]
 "#
@@ -111,7 +111,7 @@ canaries = ["salary_2026.xlsx", "budget.docx"]
         );
         assert_eq!(
             config.webhook_url,
-            Some("https://ntfy.sh/moj-ransomduck".into())
+            Some("https://ntfy.sh/your-secret-topic".into())
         );
         assert_eq!(
             config.canaries,
