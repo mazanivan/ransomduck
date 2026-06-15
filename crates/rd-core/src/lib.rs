@@ -1,6 +1,6 @@
 pub mod config;
 
-use notify::{Config, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
+use notify::{Config as NotifyConfig, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use rd_audit::AuditLogger;
 use rd_common::{Event, EventType, Incident, Platform, ProcessInfo, Signal, SignalType};
 use rd_detection::build_incident;
@@ -88,7 +88,34 @@ impl Agent {
     pub fn cooldown(&self) -> Duration {
         self.cooldown
     }
+}
 
+impl Agent {
+    /// Build an agent directly from configuration values.
+    ///
+    /// This wires up the audit logger with the optional on-disk log directory and
+    /// webhook URL, and applies the configured cooldown.
+    pub fn from_config(config: &config::Config) -> Self {
+        let mut logger = if let Some(log_dir) = &config.log_dir {
+            AuditLogger::with_log_dir(log_dir)
+        } else {
+            AuditLogger::new()
+        };
+
+        if let Some(webhook_url) = &config.webhook_url {
+            logger = logger.with_webhook(webhook_url);
+        }
+
+        Self {
+            logger,
+            protected_path: config.watch_path.clone(),
+            recent_incidents: Arc::new(Mutex::new(HashMap::new())),
+            cooldown: Duration::from_secs(config.cooldown_seconds),
+        }
+    }
+}
+
+impl Agent {
     /// Handle a single file-system event.
     ///
     /// In this first slice the agent only logs and creates incidents; it does not
@@ -210,7 +237,7 @@ pub fn watch_path(agent: &Agent, canaries: &[PathBuf]) -> notify::Result<()> {
         move |res: notify::Result<NotifyEvent>| {
             let _ = tx.send(res);
         },
-        Config::default(),
+        NotifyConfig::default(),
     )?;
 
     watcher.watch(agent.protected_path(), RecursiveMode::NonRecursive)?;

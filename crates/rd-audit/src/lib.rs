@@ -1,11 +1,15 @@
+mod webhook;
+
 use rd_common::{AuditLogEntry, Incident, Severity};
 use std::fs::{self, OpenOptions};
 use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
 use std::sync::{Arc, Mutex};
 use tracing::{error, info, warn};
+use webhook::WebhookClient;
 
-/// The audit logger stores a tamper-evident record of everything the agent sees or does.
+/// The audit logger stores a tamper-evident record of everything the agent sees or does
+/// and can push real-time notifications to a webhook.
 ///
 /// In the first slice it logs to stdout/tracing and optionally appends JSON Lines to a
 /// local directory. Later it will write to an append-only storage with integrity checks.
@@ -15,6 +19,7 @@ pub struct AuditLogger {
     // Shared handle so the logger can be used from multiple threads (for example the
     // watcher thread and async response tasks later on).
     writer: Arc<Mutex<Option<BufWriter<std::fs::File>>>>,
+    webhook: Option<WebhookClient>,
 }
 
 impl AuditLogger {
@@ -22,6 +27,7 @@ impl AuditLogger {
         Self {
             log_dir: None,
             writer: Arc::new(Mutex::new(None)),
+            webhook: None,
         }
     }
 
@@ -32,7 +38,16 @@ impl AuditLogger {
         Self {
             log_dir: Some(log_dir.as_ref().to_path_buf()),
             writer: Arc::new(Mutex::new(None)),
+            webhook: None,
         }
+    }
+
+    /// Configure a webhook URL that will receive a JSON POST for every incident.
+    ///
+    /// The POST is best-effort: a delivery failure is logged but never blocks detection.
+    pub fn with_webhook<S: Into<String>>(mut self, url: S) -> Self {
+        self.webhook = Some(WebhookClient::new(url));
+        self
     }
 
     /// Log a generic event.
@@ -57,6 +72,10 @@ impl AuditLogger {
             Some(incident.incident_id),
         );
         self.emit(entry);
+
+        if let Some(webhook) = &self.webhook {
+            webhook.send(incident);
+        }
     }
 
     fn emit(&self, entry: AuditLogEntry) {

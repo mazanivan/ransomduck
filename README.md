@@ -29,9 +29,12 @@ Create a minimal config file:
 # /tmp/rd-demo/ransomduck.toml
 watch_path = "/tmp/rd-demo"
 log_dir = "/tmp/rd-demo/logs"
+webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
 cooldown_seconds = 5
 canaries = ["invoice_Q2_2026.docx"]
 ```
+
+Replace `moj-ransomduck-r56x` with your own topic on ntfy.sh or use Discord/Slack/Telegram webhook URL.
 
 Start the agent:
 
@@ -46,6 +49,23 @@ In another terminal, trigger the test simulator:
 ```
 
 Watch `/tmp/rd-demo/logs/audit.jsonl` for JSON Lines output.
+
+If you configured `webhook_url`, the agent will also POST a JSON payload to that URL every time an incident is created:
+
+```json
+{
+  "source": "RansomDuck",
+  "timestamp": "2026-06-15T18:34:00.123456789Z",
+  "severity": "Warning",
+  "category": "incident",
+  "message": "Canary modified by /.../fake-ransomware (PID 1160344)",
+  "score": 44,
+  "level": "Restrict",
+  "incident_id": "...",
+  "process": { "pid": 1160344, "image_path": "...", "command_line": "...", ... },
+  "affected_paths": ["/tmp/rd-demo/invoice_Q2_2026.docx"]
+}
+```
 
 ### Test
 
@@ -65,7 +85,7 @@ cargo test
 
 - **rd-core:** agent, file watcher, Linux `/proc` process attribution, configuration.
 - **rd-detection:** scoring and response levels.
-- **rd-audit:** structured audit log.
+- **rd-audit:** structured audit log and webhook notifications.
 - **rd-simulator:** `fake-ransomware` test binary.
 - **rd-cli:** `ransomduck` binary.
 - **rd-common:** shared data models.

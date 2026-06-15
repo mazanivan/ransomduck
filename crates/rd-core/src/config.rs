@@ -10,6 +10,8 @@ use std::path::{Path, PathBuf};
 pub struct Config {
     pub watch_path: PathBuf,
     pub log_dir: Option<PathBuf>,
+    #[serde(default)]
+    pub webhook_url: Option<String>,
     #[serde(default = "default_cooldown_seconds")]
     pub cooldown_seconds: u64,
     #[serde(default = "default_canaries")]
@@ -30,6 +32,7 @@ impl Config {
         Self {
             watch_path: watch_path.as_ref().to_path_buf(),
             log_dir: None,
+            webhook_url: None,
             cooldown_seconds: default_cooldown_seconds(),
             canaries: default_canaries(),
         }
@@ -79,6 +82,7 @@ mod tests {
 
         let config = Config::from_file(&path).unwrap();
         assert_eq!(config.watch_path, PathBuf::from("/tmp/important"));
+        assert!(config.webhook_url.is_none());
         assert_eq!(config.cooldown_seconds, 5);
         assert_eq!(config.canaries, vec!["invoice_Q2_2026.docx"]);
     }
@@ -92,6 +96,7 @@ mod tests {
             file,
             r#"watch_path = "/tmp/important"
 log_dir = "/var/log/ransomduck"
+webhook_url = "https://ntfy.sh/moj-ransomduck"
 cooldown_seconds = 10
 canaries = ["salary_2026.xlsx", "budget.docx"]
 "#
@@ -103,6 +108,10 @@ canaries = ["salary_2026.xlsx", "budget.docx"]
         assert_eq!(
             config.log_dir,
             Some(PathBuf::from("/var/log/ransomduck"))
+        );
+        assert_eq!(
+            config.webhook_url,
+            Some("https://ntfy.sh/moj-ransomduck".into())
         );
         assert_eq!(
             config.canaries,

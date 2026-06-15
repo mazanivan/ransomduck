@@ -4,7 +4,6 @@ use rd_core::{watch_path, Agent};
 use rd_simulator::deploy_canary;
 use std::fs;
 use std::path::PathBuf;
-use std::time::Duration;
 use tracing::{error, info};
 
 #[derive(Parser)]
@@ -77,13 +76,9 @@ fn main() {
         std::process::exit(1);
     }
 
-    // Build the agent with optional on-disk logging.
-    let mut agent = if let Some(log_dir) = &config.log_dir {
-        Agent::with_log_dir(config.watch_path.clone(), log_dir)
-    } else {
-        Agent::new(config.watch_path.clone())
-    };
-    agent.set_cooldown(Duration::from_secs(config.cooldown_seconds));
+    // Build the agent from config: it will use the configured log dir, webhook,
+    // and cooldown automatically.
+    let agent = Agent::from_config(&config);
 
     info!(
         "Starting file watcher (cooldown={}s). Press Ctrl+C to stop.",
