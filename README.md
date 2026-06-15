@@ -67,6 +67,36 @@ If you configured `webhook_url`, the agent will also POST a JSON payload to that
 }
 ```
 
+## Webhook setup (notification on your phone/PC)
+
+The agent sends the JSON above as a `POST` with `Content-Type: application/json` and a 5-second timeout. You can use any service that accepts JSON POST requests.
+
+### ntfy.sh (recommended — works without registration)
+
+1. Pick a unique topic name, e.g. `moj-ransomduck-r56x`.
+2. In your phone/browser subscribe to `https://ntfy.sh/moj-ransomduck-r56x`.
+3. Set in `ransomduck.toml`:
+   ```toml
+   webhook_url = "https://ntfy.sh/moj-ransomduck-r56x"
+   ```
+4. Trigger an incident with `fake-ransomware`. The notification appears immediately.
+
+### Discord
+
+1. In your Discord server, go to **Server Settings → Integrations → Webhooks → New Webhook**.
+2. Copy the webhook URL and paste it into `ransomduck.toml`:
+   ```toml
+   webhook_url = "https://discord.com/api/webhooks/..."
+   ```
+3. Discord will post a raw JSON message. For a cleaner embed you would need a small adapter later.
+
+### Telegram or Slack
+
+- **Slack:** create an Incoming Webhook and use its URL.
+- **Telegram:** the generic JSON payload is not directly compatible with Telegram Bot API; a small translator would be needed.
+
+For quick personal testing, **ntfy.sh** is the easiest.
+
 ### Test
 
 ```bash
