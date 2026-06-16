@@ -397,12 +397,12 @@ cd ../..
 Replace the default Tauri icon with a custom RansomDuck-branded duck icon.
 
 ### What changed
-1. **`gui/tauri-app/src-tauri/icons/generate_icon.py`** (new)
-   - Python/Pillow script that draws a simple duck on a blue circular background.
-   - Outputs a 1024x1024 `icon.png`.
+1. **`gui/tauri-app/src-tauri/icons/generate_icon.py`**
+   - Python/Pillow script that draws the RansomDuck icon: gradient app-circle, shield, and outlined duck mascot.
+   - Outputs the full desktop icon set directly: Linux PNG sizes, Windows Store logo PNGs, `icon.ico`, and `icon.icns`.
 
 2. **Icon set regenerated**
-   - Ran `tauri icon icons/icon.png` to regenerate all platform sizes: 32x32, 128x128, 256x256, icon.ico, icon.icns, etc.
+   - Ran `python3 generate_icon.py` to regenerate all platform sizes: 32x32, 128x128, 256x256, `icon.ico`, `icon.icns`, etc.
    - Removed the generated `android/` and `ios/` directories because the MVP targets desktop only.
 
 3. **`install.sh`**
@@ -413,7 +413,6 @@ Replace the default Tauri icon with a custom RansomDuck-branded duck icon.
 ```bash
 cd gui/tauri-app/src-tauri/icons
 python3 generate_icon.py
-npx tauri icon icons/icon.png
 ```
 
 ### Results
@@ -432,4 +431,3 @@ npx tauri icon icons/icon.png
 2. Improve Linux attribution with `fanotify`.
 3. Build `.rpm` installer for Fedora.
 4. Windows process-attribution adapter.
-
