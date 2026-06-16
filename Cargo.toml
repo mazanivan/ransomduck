@@ -6,6 +6,7 @@ members = [
     "crates/rd-simulator",
     "crates/rd-core",
     "crates/rd-cli",
+    "gui/tauri-app/src-tauri",
 ]
 resolver = "3"
 

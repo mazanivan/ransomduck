@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="stylesheet" href="styles.css" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>RansomDuck</title>
+    <script type="module" src="/main.js" defer></script>
+  </head>
+
+  <body>
+    <main class="app">
+      <header class="hero">
+        <div class="duck">🦆</div>
+        <h1>RansomDuck</h1>
+        <p class="tagline">Playful decoy guardian for your files</p>
+        <div class="status-bar">
+          <span id="status-dot" class="status-dot"></span>
+          <span id="status-text">Loading...</span>
+        </div>
+      </header>
+
+      <section class="card controls-card">
+        <div class="controls-row">
+          <div class="input-group">
+            <label for="watch-path">Protected folder</label>
+            <input id="watch-path" type="text" placeholder="/home/you/Documents" />
+          </div>
+          <div class="input-group short">
+            <label for="cooldown">Cooldown (s)</label>
+            <input id="cooldown" type="number" min="1" max="300" value="5" />
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <div class="input-group short">
+            <label for="canary-count">Number of canaries</label>
+            <input id="canary-count" type="number" min="1" max="20" value="5" />
+          </div>
+          <div class="input-group canary-list">
+            <label>Current canary names</label>
+            <div id="canary-names" class="canary-names">(none yet)</div>
+          </div>
+        </div>
+
+        <div class="controls-row">
+          <div class="input-group">
+            <label for="webhook">Webhook URL (optional)</label>
+            <input id="webhook" type="text" placeholder="https://ntfy.sh/your-topic" />
+          </div>
+        </div>
+
+        <div class="actions">
+          <button id="save-btn" class="secondary">Save settings</button>
+          <button id="start-btn" class="primary">Start protection</button>
+          <button id="stop-btn" class="danger" disabled>Stop protection</button>
+        </div>
+
+        <div id="info" class="info"></div>
+      </section>
+
+      <section class="card incidents-card">
+        <div class="incidents-header">
+          <h2>Recent incidents</h2>
+          <span id="incident-count" class="badge">0</span>
+        </div>
+        <ul id="incident-list" class="incident-list">
+          <li class="empty">No incidents yet. Start protection and try the simulator!</li>
+        </ul>
+      </section>
+
+      <section class="card footer-card">
+        <h3>Test it</h3>
+        <p>
+          Run
+          <code>./target/release/fake-ransomware --yes --hold-open-ms 1000 &lt;your-folder&gt;</code>
+          to see a detection in action.
+        </p>
+      </section>
+    </main>
+  </body>
+</html>

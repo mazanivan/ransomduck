@@ -103,6 +103,74 @@ For quick personal testing, **ntfy.sh** is the easiest.
 cargo test
 ```
 
+## Tauri tray GUI
+
+A native system-tray application is available in `gui/tauri-app/`. It embeds the RansomDuck agent directly, so the user only needs to run **one** application. It displays protection status and incidents in real time.
+
+### Prerequisites
+
+- Node.js 20+ (the GUI ships its own copy under `.node/` for convenience, or you can use your system Node.js).
+- Linux system libraries for Tauri. On Fedora install:
+  ```bash
+  sudo dnf install webkit2gtk4.1-devel openssl-devel curl wget file libappindicator-gtk3-devel librsvg2-devel gtk3-devel patchelf
+  ```
+
+### Run in development mode
+
+```bash
+# 1. Install npm dependencies
+cd gui/tauri-app
+npm install
+
+# 2. Start the GUI with hot-reload
+#    This starts a Vite dev server and opens the native Tauri window.
+PATH=/home/diego/Documents/Projects/interesting-ideas/ransomduck/.node/bin:$PATH npm run tauri dev
+```
+
+The `npm run tauri dev` command starts a small local dev server used only during development, but the actual window is a native desktop application, not a browser tab.
+
+### Build a release binary
+
+```bash
+cd gui/tauri-app
+npm run tauri build
+```
+
+The compiled binary is written to `target/release/ransomduck-tray`.
+
+### Usage
+
+1. Run `ransomduck-tray` from the build output or system menu.
+2. Choose the folder you want to protect, set the number of canary files, and optionally a webhook URL.
+3. Click **Save settings**, then **Start protection**. Canary file names are generated randomly each run.
+4. The duck icon in the system tray shows the current status; left-click the icon to show or hide the window.
+5. Incidents appear in the GUI in real time and are still written to `~/.config/RansomDuck/logs/audit.jsonl`.
+
+To enable bundling of `.deb`/`.rpm`/AppImage packages, set `"bundle": { "active": true }` in `gui/tauri-app/src-tauri/tauri.conf.json`.
+
+## Install and run as a normal user
+
+After building the release binary you can install it like any other desktop app:
+
+```bash
+cd /home/diego/Documents/Projects/interesting-ideas/ransomduck
+./install.sh
+```
+
+This copies `ransomduck-tray` to `~/.local/bin` and creates an entry in your application menu. You can then:
+
+1. Open your system menu and launch **RansomDuck** (look for the duck icon 🦆).
+2. Or run it from the terminal:
+   ```bash
+   ransomduck-tray
+   ```
+
+To remove it later:
+
+```bash
+./uninstall.sh
+```
+
 ## Architecture
 
 ```text
@@ -117,8 +185,9 @@ cargo test
 - **rd-detection:** scoring and response levels.
 - **rd-audit:** structured audit log and webhook notifications.
 - **rd-simulator:** `fake-ransomware` test binary.
-- **rd-cli:** `ransomduck` binary.
+- **rd-cli:** `ransomduck` headless binary.
 - **rd-common:** shared data models.
+- **ransomduck-tray:** native system-tray GUI that embeds the agent (`gui/tauri-app/`).
 
 ## Current limitations
 

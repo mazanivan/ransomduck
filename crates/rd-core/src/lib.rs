@@ -232,6 +232,38 @@ pub fn fake_process_info(name: &str, pid: u32) -> ProcessInfo {
 /// FSEvents on macOS). In later slices we may switch to lower-level APIs for
 /// richer process information.
 pub fn watch_path(agent: &Agent, canaries: &[PathBuf]) -> notify::Result<()> {
+    watch_path_with_callback(agent, canaries, |_incident| {})
+}
+
+/// Like [`watch_path`], but calls `on_incident` for every newly created incident.
+///
+/// This is useful for embedding the agent inside another application (for example
+/// a Tauri GUI) that wants to react to detections immediately.
+pub fn watch_path_with_callback<F>(
+    agent: &Agent,
+    canaries: &[PathBuf],
+    on_incident: F,
+) -> notify::Result<()>
+where
+    F: FnMut(&Incident),
+{
+    let never_stop = Arc::new(Mutex::new(false));
+    watch_path_with_callback_until(agent, canaries, never_stop, on_incident)
+}
+
+/// Like [`watch_path_with_callback`], but stops when `stop_flag` becomes `true`.
+///
+/// The loop polls with a short timeout so that the watcher thread can be shut
+/// down cleanly from the outside.
+pub fn watch_path_with_callback_until<F>(
+    agent: &Agent,
+    canaries: &[PathBuf],
+    stop_flag: Arc<Mutex<bool>>,
+    mut on_incident: F,
+) -> notify::Result<()>
+where
+    F: FnMut(&Incident),
+{
     let (tx, rx) = channel();
     let mut watcher = RecommendedWatcher::new(
         move |res: notify::Result<NotifyEvent>| {
@@ -248,17 +280,31 @@ pub fn watch_path(agent: &Agent, canaries: &[PathBuf]) -> notify::Result<()> {
     );
 
     loop {
-        match rx.recv() {
-            Ok(Ok(event)) => handle_notify_event(agent, &event, canaries),
+        match rx.recv_timeout(std::time::Duration::from_millis(200)) {
+            Ok(Ok(event)) => {
+                if let Some(incident) = handle_notify_event(agent, &event, canaries) {
+                    on_incident(&incident);
+                }
+            }
             Ok(Err(e)) => tracing::error!("watch error: {:?}", e),
+            Err(std::sync::mpsc::RecvTimeoutError::Timeout) => {
+                if *stop_flag.lock().unwrap_or_else(|e| e.into_inner()) {
+                    break;
+                }
+            }
             Err(_) => break,
         }
     }
 
+    drop(watcher);
     Ok(())
 }
 
-fn handle_notify_event(agent: &Agent, event: &NotifyEvent, canaries: &[PathBuf]) {
+fn handle_notify_event(
+    agent: &Agent,
+    event: &NotifyEvent,
+    canaries: &[PathBuf],
+) -> Option<Incident> {
     use notify::event::{EventKind, ModifyKind};
 
     let event_type = match &event.kind {
@@ -283,10 +329,12 @@ fn handle_notify_event(agent: &Agent, event: &NotifyEvent, canaries: &[PathBuf])
                 }
 
                 let event = Event::new(Platform::Linux, event_type, Some(path.clone()), process);
-                agent.handle_event(event, canaries);
+                return agent.handle_event(event, canaries);
             }
         }
     }
+
+    None
 }
 
 #[cfg(test)]
