@@ -45,7 +45,7 @@ cat > "${INSTALL_APPS_DIR}/${DESKTOP_NAME}" <<EOF
 Name=RansomDuck
 Comment=Local anti-ransomware canary guardian
 Exec=${INSTALL_BIN_DIR}/${BIN_NAME}
-Icon=${ICON_NAME}
+Icon=${INSTALL_ICONS_DIR}/${ICON_NAME}
 Type=Application
 Terminal=false
 Categories=System;Security;Utility;
@@ -54,7 +54,15 @@ EOF
 
 chmod +x "${INSTALL_APPS_DIR}/${DESKTOP_NAME}"
 
-# Refresh desktop database if available.
+# Refresh icon cache and desktop database if available.
+if command -v gtk-update-icon-cache &> /dev/null; then
+    gtk-update-icon-cache -f -t "${HOME}/.local/share/icons/hicolor" || true
+fi
+
+if command -v xdg-desktop-menu &> /dev/null; then
+    xdg-desktop-menu forceupdate || true
+fi
+
 if command -v update-desktop-database &> /dev/null; then
     update-desktop-database "${INSTALL_APPS_DIR}" || true
 fi
