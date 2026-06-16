@@ -5,6 +5,7 @@ members = [
     "crates/rd-audit",
     "crates/rd-simulator",
     "crates/rd-core",
+    "crates/rd-containment",
     "crates/rd-cli",
     "gui/tauri-app/src-tauri",
 ]

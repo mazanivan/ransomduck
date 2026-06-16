@@ -9,6 +9,7 @@ license.workspace = true
 rd-common = { path = "../rd-common" }
 rd-detection = { path = "../rd-detection" }
 rd-audit = { path = "../rd-audit" }
+rd-containment = { path = "../rd-containment" }
 notify = { workspace = true }
 serde = { workspace = true }
 thiserror = { workspace = true }
@@ -17,3 +18,4 @@ tracing = { workspace = true }
 
 [dev-dependencies]
 tempfile = { workspace = true }
+uuid = { workspace = true }

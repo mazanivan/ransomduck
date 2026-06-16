@@ -6,7 +6,7 @@ A local, explainable anti-ransomware canary agent for small businesses, freelanc
 
 ## What it does
 
-RansomDuck places decoy files (canaries) in directories you want to protect. If something modifies a canary, it immediately builds an **explainable incident** with a risk score, logs it, and tries to identify the responsible process. The score is built from transparent signals and thresholds, not a black-box ML model.
+RansomDuck places decoy files (canaries) in directories you want to protect. If something modifies a canary, it immediately builds an **explainable incident** with a risk score, logs it, tries to identify the responsible process, and can optionally suspend or kill it. The score is built from transparent signals and thresholds, not a black-box ML model.
 
 ```text
 Canary modified by /home/you/.../fake-ransomware (PID 1160344)
@@ -32,6 +32,10 @@ log_dir = "/tmp/rd-demo/logs"
 webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
 cooldown_seconds = 5
 canaries = ["invoice_Q2_2026.docx"]
+# Optional: "none" (default), "suspend", or "kill".
+containment_action = "kill"
+# Optional: "contain" (default) or "restrict". Set to "restrict" to react on lower scores.
+containment_threshold = "restrict"
 ```
 
 Replace `your-secret-topic-xyz` with your own topic on ntfy.sh or use Discord/Slack/Telegram webhook URL.
@@ -142,9 +146,10 @@ The compiled binary is written to `target/release/ransomduck-tray`.
 
 1. Run `ransomduck-tray` from the build output or system menu.
 2. Click **Browse** to pick the folder you want to protect, set the number of canary files, and optionally a webhook URL.
-3. Click **Save settings**, then **Start protection**. Canary file names are generated randomly each run.
-4. The duck icon in the system tray shows the current status; left-click the icon to show or hide the window.
-5. Incidents appear in the GUI in real time and are still written to `~/.config/RansomDuck/logs/audit.jsonl`.
+3. Choose a **Containment** action: `none` (log only), `suspend`, or `kill`, and a **Threshold**: `contain` (default) or `restrict`.
+4. Click **Save settings**, then **Start protection**. Canary file names are generated randomly each run.
+5. The duck icon in the system tray shows the current status; left-click the icon to show or hide the window.
+6. Incidents appear in the GUI in real time and are still written to `~/.config/RansomDuck/logs/audit.jsonl`.
 
 To enable bundling of `.deb`/`.rpm`/AppImage packages, set `"bundle": { "active": true }` in `gui/tauri-app/src-tauri/tauri.conf.json`.
 
@@ -183,6 +188,7 @@ To remove it later:
 
 - **rd-core:** agent, file watcher, Linux `/proc` process attribution, configuration.
 - **rd-detection:** scoring and response levels.
+- **rd-containment:** process suspend/kill actions (Linux via `SIGSTOP`/`SIGKILL`).
 - **rd-audit:** structured audit log and webhook notifications.
 - **rd-simulator:** `fake-ransomware` test binary.
 - **rd-cli:** `ransomduck` headless binary.
@@ -192,8 +198,8 @@ To remove it later:
 ## Current limitations
 
 - Process attribution on Linux relies on scanning `/proc/*/fd`, which only works while the file is still open. Real, fast-closing ransomware is better attributed through `fanotify`/`auditd`/eBPF on Linux or ETW on Windows.
-- Containment (suspend/kill) is not implemented yet.
-- Windows and macOS support is planned.
+- Containment (suspend/kill) is implemented on Linux; Windows and macOS currently return a not-implemented action record.
+- Windows and macOS process attribution and containment are planned.
 
 ## License
 

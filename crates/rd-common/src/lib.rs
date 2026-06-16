@@ -112,11 +112,12 @@ impl Signal {
 }
 
 /// Response level chosen by the agent based on the risk score.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ResponseLevel {
     Monitor,
     Restrict,
+    #[default]
     Contain,
 }
 
@@ -137,6 +138,7 @@ pub enum ActionType {
     Alert,
     Throttle,
     SuspendProcess,
+    KillProcess,
     IsolateNetwork,
 }
 

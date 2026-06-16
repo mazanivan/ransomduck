@@ -6,6 +6,8 @@ let config = {
   canaryCount: 5,
   webhookUrl: "",
   cooldownSeconds: 5,
+  containmentAction: "none",
+  containmentThreshold: "contain",
 };
 
 const els = {
@@ -14,6 +16,8 @@ const els = {
   watchPath: document.querySelector("#watch-path"),
   cooldown: document.querySelector("#cooldown"),
   canaryCount: document.querySelector("#canary-count"),
+  containmentAction: document.querySelector("#containment-action"),
+  containmentThreshold: document.querySelector("#containment-threshold"),
   canaryNames: document.querySelector("#canary-names"),
   webhook: document.querySelector("#webhook"),
   saveBtn: document.querySelector("#save-btn"),
@@ -94,6 +98,8 @@ function getConfigFromForm() {
     canaryCount: parseInt(els.canaryCount.value, 10) || 5,
     webhookUrl: els.webhook.value.trim() || null,
     cooldownSeconds: parseInt(els.cooldown.value, 10) || 5,
+    containmentAction: els.containmentAction.value || "none",
+    containmentThreshold: els.containmentThreshold.value || "contain",
   };
 }
 
@@ -101,6 +107,8 @@ function fillForm(cfg) {
   els.watchPath.value = cfg.watchPath || "";
   els.cooldown.value = cfg.cooldownSeconds || 5;
   els.canaryCount.value = cfg.canaryCount || 5;
+  els.containmentAction.value = cfg.containmentAction || "none";
+  els.containmentThreshold.value = cfg.containmentThreshold || "contain";
   els.webhook.value = cfg.webhookUrl || "";
 }
 

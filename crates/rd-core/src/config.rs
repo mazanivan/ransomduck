@@ -1,3 +1,5 @@
+use rd_common::ResponseLevel;
+use rd_containment::ContainmentAction;
 use serde::{Deserialize, Serialize};
 use std::path::{Path, PathBuf};
 
@@ -16,6 +18,12 @@ pub struct Config {
     pub cooldown_seconds: u64,
     #[serde(default = "default_canaries")]
     pub canaries: Vec<String>,
+    #[serde(default)]
+    pub containment_action: ContainmentAction,
+    /// Lowest incident response level at which the configured containment action
+    /// is executed. Defaults to `Contain`; set to `Restrict` to react earlier.
+    #[serde(default = "default_containment_threshold")]
+    pub containment_threshold: ResponseLevel,
 }
 
 fn default_cooldown_seconds() -> u64 {
@@ -24,6 +32,10 @@ fn default_cooldown_seconds() -> u64 {
 
 fn default_canaries() -> Vec<String> {
     vec!["invoice_Q2_2026.docx".into()]
+}
+
+fn default_containment_threshold() -> ResponseLevel {
+    ResponseLevel::Contain
 }
 
 impl Config {
@@ -35,6 +47,8 @@ impl Config {
             webhook_url: None,
             cooldown_seconds: default_cooldown_seconds(),
             canaries: default_canaries(),
+            containment_action: ContainmentAction::default(),
+            containment_threshold: default_containment_threshold(),
         }
     }
 
@@ -85,6 +99,8 @@ mod tests {
         assert!(config.webhook_url.is_none());
         assert_eq!(config.cooldown_seconds, 5);
         assert_eq!(config.canaries, vec!["invoice_Q2_2026.docx"]);
+        assert_eq!(config.containment_action, ContainmentAction::None);
+        assert_eq!(config.containment_threshold, ResponseLevel::Contain);
     }
 
     #[test]
@@ -99,6 +115,8 @@ log_dir = "/var/log/ransomduck"
 webhook_url = "https://ntfy.sh/your-secret-topic"
 cooldown_seconds = 10
 canaries = ["salary_2026.xlsx", "budget.docx"]
+containment_action = "kill"
+containment_threshold = "restrict"
 "#
         )
         .unwrap();
@@ -117,5 +135,7 @@ canaries = ["salary_2026.xlsx", "budget.docx"]
             config.canaries,
             vec!["salary_2026.xlsx", "budget.docx"]
         );
+        assert_eq!(config.containment_action, ContainmentAction::Kill);
+        assert_eq!(config.containment_threshold, ResponseLevel::Restrict);
     }
 }

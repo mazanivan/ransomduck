@@ -2,7 +2,8 @@ pub mod config;
 
 use notify::{Config as NotifyConfig, Event as NotifyEvent, RecommendedWatcher, RecursiveMode, Watcher};
 use rd_audit::AuditLogger;
-use rd_common::{Event, EventType, Incident, Platform, ProcessInfo, Signal, SignalType};
+use rd_common::{Event, EventType, Incident, Platform, ProcessInfo, ResponseLevel, Signal, SignalType};
+use rd_containment::{execute as execute_containment, ContainmentAction};
 use rd_detection::build_incident;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -48,7 +49,8 @@ fn resolve_process_for_path(_path: &PathBuf) -> Option<ProcessInfo> {
     None
 }
 
-/// The agent coordinates the file monitor, detection engine, and audit logger.
+/// The agent coordinates the file monitor, detection engine, audit logger, and
+/// optional process containment.
 #[derive(Debug)]
 pub struct Agent {
     logger: AuditLogger,
@@ -57,6 +59,10 @@ pub struct Agent {
     /// detections that happen in quick succession (e.g. multiple write flushes).
     recent_incidents: Arc<Mutex<HashMap<String, Instant>>>,
     cooldown: Duration,
+    /// Containment action applied when an incident reaches the configured threshold.
+    containment_action: ContainmentAction,
+    /// Lowest incident response level at which containment is executed.
+    containment_threshold: ResponseLevel,
 }
 
 impl Agent {
@@ -66,6 +72,8 @@ impl Agent {
             protected_path,
             recent_incidents: Arc::new(Mutex::new(HashMap::new())),
             cooldown: Duration::from_secs(5),
+            containment_action: ContainmentAction::None,
+            containment_threshold: ResponseLevel::Contain,
         }
     }
 
@@ -76,6 +84,8 @@ impl Agent {
             protected_path,
             recent_incidents: Arc::new(Mutex::new(HashMap::new())),
             cooldown: Duration::from_secs(5),
+            containment_action: ContainmentAction::None,
+            containment_threshold: ResponseLevel::Contain,
         }
     }
 
@@ -88,6 +98,78 @@ impl Agent {
     pub fn cooldown(&self) -> Duration {
         self.cooldown
     }
+
+    /// Override the containment action applied when the threshold is reached.
+    pub fn set_containment_action(&mut self, action: ContainmentAction) {
+        self.containment_action = action;
+    }
+
+    /// Return the configured containment action.
+    pub fn containment_action(&self) -> ContainmentAction {
+        self.containment_action
+    }
+
+    /// Override the response level threshold at which containment is executed.
+    pub fn set_containment_threshold(&mut self, level: ResponseLevel) {
+        self.containment_threshold = level;
+    }
+
+    /// Return the configured containment threshold.
+    pub fn containment_threshold(&self) -> ResponseLevel {
+        self.containment_threshold
+    }
+
+    /// Apply the configured containment action to an incident if appropriate.
+    ///
+    /// Containment is executed only when the incident reached or exceeded the
+    /// configured threshold, a non-None action is configured, and the responsible
+    /// process was identified (PID is not 0). The resulting action is appended to
+    /// `incident.actions_taken` and logged.
+    fn apply_containment(&self, incident: &mut Incident) {
+        if !level_reaches_threshold(incident.level, self.containment_threshold)
+            || self.containment_action == ContainmentAction::None
+        {
+            return;
+        }
+
+        if incident.process.pid == 0 {
+            self.logger.log(
+                rd_common::Severity::Warning,
+                "containment",
+                "Containment requested but the process could not be identified (PID 0); skipping action",
+                "rd-core",
+            );
+            return;
+        }
+
+        let action = execute_containment(self.containment_action, incident.incident_id, &incident.process);
+        let description = format!(
+            "Applied containment action '{}' to PID {}: success={}",
+            self.containment_action, incident.process.pid, action.success
+        );
+        if action.success {
+            self.logger.log(
+                rd_common::Severity::Critical,
+                "containment",
+                &description,
+                "rd-core",
+            );
+        } else {
+            let error = action.error_message.clone().unwrap_or_default();
+            self.logger.log(
+                rd_common::Severity::Warning,
+                "containment",
+                &format!("{description} error={error}"),
+                "rd-core",
+            );
+        }
+        incident.actions_taken.push(action);
+    }
+}
+
+/// Return true when `level` is at least as severe as `threshold`.
+fn level_reaches_threshold(level: ResponseLevel, threshold: ResponseLevel) -> bool {
+    level as u8 >= threshold as u8
 }
 
 impl Agent {
@@ -111,6 +193,8 @@ impl Agent {
             protected_path: config.watch_path.clone(),
             recent_incidents: Arc::new(Mutex::new(HashMap::new())),
             cooldown: Duration::from_secs(config.cooldown_seconds),
+            containment_action: config.containment_action,
+            containment_threshold: config.containment_threshold,
         }
     }
 }
@@ -150,12 +234,14 @@ impl Agent {
                 "A known canary file was modified",
             );
 
-            let incident = build_incident(
+            let mut incident = build_incident(
                 event.process.clone(),
                 event.path.into_iter().collect(),
                 vec![signal],
                 1.10, // unknown process multiplier
             );
+
+            self.apply_containment(&mut incident);
 
             self.logger.log(
                 rd_common::Severity::Warning,
@@ -340,8 +426,9 @@ fn handle_notify_event(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rd_common::{EventType, Platform};
+    use rd_common::{ActionType, EventType, Platform, SignalType};
     use std::fs;
+    use uuid::Uuid;
 
     #[test]
     fn canary_modification_creates_incident() {
@@ -385,5 +472,150 @@ mod tests {
         let incident = agent.handle_event(event, &[canary]);
 
         assert!(incident.is_none());
+    }
+
+    #[test]
+    fn default_containment_action_is_none() {
+        let agent = Agent::new(PathBuf::from("/tmp"));
+        assert_eq!(agent.containment_action(), ContainmentAction::None);
+    }
+
+    #[test]
+    fn default_containment_threshold_is_contain() {
+        let agent = Agent::new(PathBuf::from("/tmp"));
+        assert_eq!(agent.containment_threshold(), ResponseLevel::Contain);
+    }
+
+    #[test]
+    fn restrict_level_does_not_trigger_containment_with_default_threshold() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut agent = Agent::new(dir.path().to_path_buf());
+        agent.set_containment_action(ContainmentAction::Kill);
+
+        let mut incident = build_incident(
+            fake_process_info("fake-ransomware", 12345),
+            vec![PathBuf::from("/tmp/canary.docx")],
+            vec![Signal::new(
+                Uuid::new_v4(),
+                "canary_modified",
+                SignalType::CanaryModified,
+                0.40,
+                1.0,
+                "canary modified",
+            )],
+            1.10,
+        );
+        assert_eq!(incident.level, ResponseLevel::Restrict);
+
+        agent.apply_containment(&mut incident);
+        assert!(!incident
+            .actions_taken
+            .iter()
+            .any(|a| a.action_type == ActionType::KillProcess));
+    }
+
+    #[test]
+    fn restrict_level_triggers_kill_when_threshold_lowered() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut agent = Agent::new(dir.path().to_path_buf());
+        agent.set_containment_action(ContainmentAction::Kill);
+        agent.set_containment_threshold(ResponseLevel::Restrict);
+
+        let mut incident = build_incident(
+            fake_process_info("fake-ransomware", 12345),
+            vec![PathBuf::from("/tmp/canary.docx")],
+            vec![Signal::new(
+                Uuid::new_v4(),
+                "canary_modified",
+                SignalType::CanaryModified,
+                0.40,
+                1.0,
+                "canary modified",
+            )],
+            1.10,
+        );
+        assert_eq!(incident.level, ResponseLevel::Restrict);
+
+        agent.apply_containment(&mut incident);
+        assert!(incident
+            .actions_taken
+            .iter()
+            .any(|a| a.action_type == ActionType::KillProcess));
+    }
+
+    #[test]
+    fn contain_level_triggers_configured_kill() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut agent = Agent::new(dir.path().to_path_buf());
+        agent.set_containment_action(ContainmentAction::Kill);
+
+        let mut incident = build_incident(
+            fake_process_info("fake-ransomware", 12345),
+            vec![PathBuf::from("/tmp/canary.docx")],
+            vec![
+                Signal::new(
+                    Uuid::new_v4(),
+                    "canary_modified",
+                    SignalType::CanaryModified,
+                    0.40,
+                    1.0,
+                    "canary modified",
+                ),
+                Signal::new(
+                    Uuid::new_v4(),
+                    "vss_deleted",
+                    SignalType::VssShadowDeletion,
+                    0.50,
+                    1.0,
+                    "vss shadow deleted",
+                ),
+            ],
+            1.10,
+        );
+        assert_eq!(incident.level, ResponseLevel::Contain);
+
+        agent.apply_containment(&mut incident);
+        assert!(incident
+            .actions_taken
+            .iter()
+            .any(|a| a.action_type == ActionType::KillProcess));
+    }
+
+    #[test]
+    fn contain_level_skips_containment_when_process_unknown() {
+        let dir = tempfile::tempdir().unwrap();
+        let mut agent = Agent::new(dir.path().to_path_buf());
+        agent.set_containment_action(ContainmentAction::Kill);
+
+        let mut incident = build_incident(
+            fake_process_info("unknown-process", 0),
+            vec![PathBuf::from("/tmp/canary.docx")],
+            vec![
+                Signal::new(
+                    Uuid::new_v4(),
+                    "canary_modified",
+                    SignalType::CanaryModified,
+                    0.40,
+                    1.0,
+                    "canary modified",
+                ),
+                Signal::new(
+                    Uuid::new_v4(),
+                    "vss_deleted",
+                    SignalType::VssShadowDeletion,
+                    0.50,
+                    1.0,
+                    "vss shadow deleted",
+                ),
+            ],
+            1.10,
+        );
+        assert_eq!(incident.level, ResponseLevel::Contain);
+
+        agent.apply_containment(&mut incident);
+        assert!(!incident
+            .actions_taken
+            .iter()
+            .any(|a| a.action_type == ActionType::KillProcess));
     }
 }

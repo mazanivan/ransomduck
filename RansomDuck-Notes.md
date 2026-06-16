@@ -383,9 +383,88 @@ cd ../..
 - Linux only; Windows/macOS adapters are on the roadmap.
 - Canary cleanup relies on graceful shutdown; SIGKILL can leave decoy files behind.
 
+---
+
+## 2026-06-16 — Process containment (suspend/kill)
+
+### Goal
+Allow the agent to actively contain a suspicious process, starting with Linux `SIGSTOP` / `SIGKILL`, with a configurable response-level threshold.
+
+### What changed
+1. **`crates/rd-containment/`** (new crate, now in workspace)
+   - Added `ContainmentAction` enum (`none` / `suspend` / `kill`) with serde support and case-insensitive parsing.
+   - Linux implementation uses `nix::sys::signal::kill` with `SIGSTOP` or `SIGKILL`.
+   - Non-Linux targets return a failed action record with a not-implemented message.
+   - Added a unit test that spawns a real `sleep` process and verifies `Kill` terminates it.
+
+2. **`crates/rd-common/src/lib.rs`**
+   - Added `KillProcess` variant to `ActionType`.
+   - Added `Default` derive for `ResponseLevel` (default `Contain`).
+
+3. **`crates/rd-core/Cargo.toml`**
+   - Added `rd-containment` dependency.
+
+4. **`crates/rd-core/src/config.rs`**
+   - Added `containment_action` config field with serde default (`none`).
+   - Added `containment_threshold` config field with serde default (`Contain`).
+   - Updated TOML parsing tests for both fields.
+
+5. **`crates/rd-core/src/lib.rs`**
+   - `Agent` now stores `containment_action` and `containment_threshold` with getters/setters.
+   - `Agent::from_config()` reads both configured values.
+   - Added `apply_containment()` helper that executes the configured action when:
+     - the incident level reaches or exceeds the configured threshold,
+     - a non-`none` action is configured, and
+     - the responsible process was identified (PID != 0).
+   - Added `level_reaches_threshold()` helper.
+   - Added tests for default threshold, Restrict-level gating, Contain-level kill, lowering threshold to Restrict, and skipping when PID is 0.
+
+6. **`gui/tauri-app/src-tauri/`**
+   - Added `rd-containment` dependency.
+   - Added `containment_action` and `containment_threshold` to `AppConfig` and `PersistedConfig`.
+   - `AppConfig::to_agent_config()` passes both values to the agent.
+
+7. **`gui/tauri-app/src/index.html` and `main.js`**
+   - Added **Action** (None / Suspend / Kill) and **Threshold** (Contain / Restrict) dropdowns to the settings UI.
+   - Both values are saved, loaded, and forwarded to the agent.
+
+8. **`Cargo.toml`** (workspace root)
+   - Added `crates/rd-containment` to workspace members.
+
+9. **`README.md`**
+   - Documented `containment_action` and `containment_threshold` in the config example and GUI usage.
+   - Updated current limitations.
+
+### How it works
+- By default, `containment_action = "none"` and the agent behaves as before (log + alert).
+- When `containment_action = "suspend"` or `"kill"` and an incident reaches the configured `containment_threshold` (`Contain` by default, or `Restrict`), the agent sends `SIGSTOP` or `SIGKILL` to the attributed PID.
+- If attribution fails (PID 0), the agent logs a warning and skips containment.
+- Containment results are appended to `incident.actions_taken`, so they appear in `audit.jsonl` and webhook payloads.
+
+### Configuration example
+```toml
+watch_path = "/tmp/rd-demo"
+log_dir = "/tmp/rd-demo/logs"
+webhook_url = "https://ntfy.sh/your-secret-topic-xyz"
+cooldown_seconds = 5
+canaries = ["invoice_Q2_2026.docx"]
+containment_action = "kill"
+containment_threshold = "restrict"
+```
+
+### Results
+- `cargo test --workspace` passes (19 tests).
+- `cargo build --release --bin ransomduck --bin fake-ransomware` succeeds.
+- The `kill_action_terminates_real_process` test verifies a live process is terminated by SIGKILL.
+- The `restrict_level_triggers_kill_when_threshold_lowered` test verifies the threshold works.
+
+### Known limitations
+- Linux only for now; Windows/macOS return a not-implemented action.
+- Process attribution is still timing-sensitive `/proc/*/fd` scanning.
+
 ### Next steps
-1. Implement containment: kill/suspend suspicious process.
-2. Improve Linux attribution with `fanotify`.
-3. Build `.rpm` installer for Fedora.
-4. Windows process-attribution adapter.
+1. Improve Linux attribution with `fanotify`.
+2. Build `.rpm` installer for Fedora.
+3. Windows process-attribution adapter.
+4. Optional: configurable containment threshold so `kill` can be triggered at `Restrict` level when explicitly requested.
 

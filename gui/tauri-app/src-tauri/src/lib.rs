@@ -1,4 +1,5 @@
-use rd_common::Severity;
+use rd_common::{ResponseLevel, Severity};
+use rd_containment::ContainmentAction;
 use rd_core::config::Config;
 use rd_core::{Agent, watch_path_with_callback_until};
 use serde::{Deserialize, Serialize};
@@ -62,6 +63,10 @@ pub struct AppConfig {
     pub webhook_url: Option<String>,
     #[serde(default = "default_cooldown")]
     pub cooldown_seconds: u64,
+    #[serde(default = "default_containment_action")]
+    pub containment_action: ContainmentAction,
+    #[serde(default = "default_containment_threshold")]
+    pub containment_threshold: ResponseLevel,
 }
 
 fn default_canary_count() -> usize {
@@ -72,6 +77,14 @@ fn default_cooldown() -> u64 {
     5
 }
 
+fn default_containment_action() -> ContainmentAction {
+    ContainmentAction::None
+}
+
+fn default_containment_threshold() -> ResponseLevel {
+    ResponseLevel::Contain
+}
+
 impl AppConfig {
     fn to_agent_config(&self, canaries: Vec<String>) -> Config {
         Config {
@@ -80,6 +93,8 @@ impl AppConfig {
             webhook_url: self.webhook_url.clone(),
             cooldown_seconds: self.cooldown_seconds,
             canaries,
+            containment_action: self.containment_action,
+            containment_threshold: self.containment_threshold,
         }
     }
 
@@ -93,6 +108,8 @@ impl AppConfig {
             canary_count: self.canary_count,
             webhook_url: self.webhook_url.clone(),
             cooldown_seconds: self.cooldown_seconds,
+            containment_action: self.containment_action,
+            containment_threshold: self.containment_threshold,
         };
         let toml = toml::to_string(&persisted).map_err(|e| e.to_string())?;
         std::fs::write(default_config_path(), toml).map_err(|e| e.to_string())
@@ -107,6 +124,8 @@ impl AppConfig {
             canary_count: persisted.canary_count,
             webhook_url: persisted.webhook_url,
             cooldown_seconds: persisted.cooldown_seconds,
+            containment_action: persisted.containment_action,
+            containment_threshold: persisted.containment_threshold,
         })
     }
 }
@@ -119,6 +138,10 @@ struct PersistedConfig {
     pub webhook_url: Option<String>,
     #[serde(default = "default_cooldown")]
     pub cooldown_seconds: u64,
+    #[serde(default = "default_containment_action")]
+    pub containment_action: ContainmentAction,
+    #[serde(default = "default_containment_threshold")]
+    pub containment_threshold: ResponseLevel,
 }
 
 #[derive(Debug, Clone, Serialize, Default)]
@@ -452,6 +475,8 @@ pub fn build_app() -> tauri::App {
             canary_count: default_canary_count(),
             webhook_url: None,
             cooldown_seconds: default_cooldown(),
+            containment_action: default_containment_action(),
+            containment_threshold: default_containment_threshold(),
         }
     });
 

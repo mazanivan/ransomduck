@@ -35,3 +35,4 @@ rd-core = { path = "../../../crates/rd-core" }
 rd-audit = { path = "../../../crates/rd-audit" }
 rd-simulator = { path = "../../../crates/rd-simulator" }
 rd-common = { path = "../../../crates/rd-common" }
+rd-containment = { path = "../../../crates/rd-containment" }
