@@ -37,11 +37,13 @@ body {
   margin-bottom: 1.75rem;
 }
 
-.duck {
-  font-size: 4.5rem;
-  line-height: 1;
-  margin-bottom: 0.5rem;
-  filter: drop-shadow(0 4px 12px rgba(76, 201, 240, 0.35));
+.hero-mascot {
+  max-width: 220px;
+  max-height: 165px;
+  width: auto;
+  height: auto;
+  margin-bottom: 0.75rem;
+  filter: drop-shadow(0 6px 16px rgba(76, 201, 240, 0.25));
   animation: bob 2.5s ease-in-out infinite;
 }
 
