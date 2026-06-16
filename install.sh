@@ -2,6 +2,9 @@
 # Install RansomDuck tray GUI for the current user.
 # This script copies the release binary to ~/.local/bin and registers a
 # .desktop entry so the app appears in the system application menu.
+#
+# If the release binary is not present, the script will attempt to build it
+# automatically using the bundled Node.js runtime under .node/.
 
 set -euo pipefail
 
@@ -17,13 +20,47 @@ INSTALL_BIN_DIR="${HOME}/.local/bin"
 INSTALL_APPS_DIR="${HOME}/.local/share/applications"
 INSTALL_ICONS_DIR="${HOME}/.local/share/icons/hicolor/128x128/apps"
 
+# Prefer the bundled Node.js if available; otherwise fall back to system node.
+if [[ -d "${SCRIPT_DIR}/.node/bin" ]]; then
+    export PATH="${SCRIPT_DIR}/.node/bin:${PATH}"
+fi
+
+build_binary() {
+    echo "Release binary not found; building from source..."
+
+    if ! command -v node &> /dev/null; then
+        echo "ERROR: Node.js is required to build the GUI but was not found."
+        echo "Either install Node.js 20+ or place it under ${SCRIPT_DIR}/.node/"
+        exit 1
+    fi
+
+    if ! command -v npm &> /dev/null; then
+        echo "ERROR: npm is required to build the GUI but was not found."
+        exit 1
+    fi
+
+    echo "Installing npm dependencies..."
+    (
+        cd "${SCRIPT_DIR}/gui/tauri-app"
+        npm install
+    )
+
+    echo "Building release binary (this may take a few minutes)..."
+    (
+        cd "${SCRIPT_DIR}/gui/tauri-app"
+        npm run tauri build
+    )
+
+    if [[ ! -f "${SOURCE_BIN}" ]]; then
+        echo "ERROR: Build completed but binary is still missing: ${SOURCE_BIN}"
+        exit 1
+    fi
+}
+
 echo "Installing RansomDuck..."
 
 if [[ ! -f "${SOURCE_BIN}" ]]; then
-    echo "ERROR: Release binary not found: ${SOURCE_BIN}"
-    echo "Build it first with:"
-    echo "  cd gui/tauri-app && npm run tauri build"
-    exit 1
+    build_binary
 fi
 
 mkdir -p "${INSTALL_BIN_DIR}"

@@ -155,14 +155,14 @@ To enable bundling of `.deb`/`.rpm`/AppImage packages, set `"bundle": { "active"
 
 ## Install and run as a normal user
 
-After building the release binary you can install it like any other desktop app:
+You can install RansomDuck like any other desktop app:
 
 ```bash
 cd /home/diego/Documents/Projects/interesting-ideas/ransomduck
 ./install.sh
 ```
 
-This copies `ransomduck-tray` to `~/.local/bin` and creates an entry in your application menu. You can then:
+`install.sh` will build the release binary automatically if it is not already present (it uses the bundled Node.js under `.node/` when available), copy `ransomduck-tray` to `~/.local/bin`, and create an entry in your application menu. You can then:
 
 1. Open your system menu and launch **RansomDuck** (look for the duck icon 🦆).
 2. Or run it from the terminal:
