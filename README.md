@@ -141,7 +141,7 @@ The compiled binary is written to `target/release/ransomduck-tray`.
 ### Usage
 
 1. Run `ransomduck-tray` from the build output or system menu.
-2. Choose the folder you want to protect, set the number of canary files, and optionally a webhook URL.
+2. Click **Browse** to pick the folder you want to protect, set the number of canary files, and optionally a webhook URL.
 3. Click **Save settings**, then **Start protection**. Canary file names are generated randomly each run.
 4. The duck icon in the system tray shows the current status; left-click the icon to show or hide the window.
 5. Incidents appear in the GUI in real time and are still written to `~/.config/RansomDuck/logs/audit.jsonl`.

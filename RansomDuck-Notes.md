@@ -322,16 +322,70 @@ PATH=/home/diego/Documents/Projects/interesting-ideas/ransomduck/.node/bin:$PATH
 - The resulting binary is self-contained and no longer needs a separate `ransomduck` executable.
 
 ### Known limitations
-- Folder selection still uses a text input; a native folder picker would improve UX.
+- ~~Folder selection still uses a text input; a native folder picker would improve UX.~~ done below.
 - No process containment yet (kill/suspend) – detection only.
 - `/proc/*/fd` attribution is still timing-sensitive.
 - Linux only; Windows/macOS adapters are on the roadmap.
 - Canary cleanup relies on graceful shutdown; SIGKILL can leave decoy files behind.
 
 ### Next steps
-1. Add native folder picker dialog.
+1. ~~Add native folder picker dialog.~~ done below.
 2. Implement containment: kill/suspend suspicious process.
 3. Improve Linux attribution with `fanotify`.
 4. Build `.rpm` installer for Fedora.
 5. Windows process-attribution adapter.
+
+---
+
+## 2026-06-16 — Native folder picker
+
+### Goal
+Let the user choose the protected folder through a system file dialog instead of typing a path manually.
+
+### What changed
+1. **`gui/tauri-app/src-tauri/Cargo.toml`**
+   - Added `tauri-plugin-dialog = "2"`.
+
+2. **`gui/tauri-app/src-tauri/src/lib.rs`**
+   - Registered `tauri_plugin_dialog::init()`.
+   - Replaced the empty `select_directory` command with a real call to `app.dialog().file().blocking_pick_folder()`.
+   - Added `select_directory` to the invoke handler.
+
+3. **`gui/tauri-app/src/index.html` and `styles.css`**
+   - Added a **Browse** button next to the protected-folder input.
+   - Styled the folder input row so the text field and button sit side by side.
+
+4. **`gui/tauri-app/src/main.js`**
+   - Added a click handler for the **Browse** button that invokes `select_directory` and fills the input with the chosen path.
+
+5. **`README.md`**
+   - Updated usage instructions to mention the **Browse** button.
+
+### How to run
+Build and reinstall as usual:
+```bash
+cd /home/diego/Documents/Projects/interesting-ideas/ransomduck
+cd gui/tauri-app
+PATH=/home/diego/Documents/Projects/interesting-ideas/ransomduck/.node/bin:$PATH npm run tauri build
+cd ../..
+./install.sh
+```
+
+### Results
+- `cargo test --workspace` passes.
+- `npm run tauri build` succeeds.
+- `./install.sh` installs the updated binary.
+- Clicking **Browse** opens the system folder picker dialog.
+
+### Known limitations
+- No process containment yet (kill/suspend) – detection only.
+- `/proc/*/fd` attribution is still timing-sensitive.
+- Linux only; Windows/macOS adapters are on the roadmap.
+- Canary cleanup relies on graceful shutdown; SIGKILL can leave decoy files behind.
+
+### Next steps
+1. Implement containment: kill/suspend suspicious process.
+2. Improve Linux attribution with `fanotify`.
+3. Build `.rpm` installer for Fedora.
+4. Windows process-attribution adapter.
 

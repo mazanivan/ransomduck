@@ -8,6 +8,7 @@ use std::thread::{self, JoinHandle};
 use tauri::menu::{Menu, MenuItem};
 use tauri::tray::TrayIconBuilder;
 use tauri::{Emitter, Manager, RunEvent, State, WindowEvent};
+use tauri_plugin_dialog::DialogExt;
 use tracing::info;
 
 fn default_config_dir() -> PathBuf {
@@ -374,6 +375,14 @@ fn get_incidents(state: State<AppState>, limit: usize) -> Result<Vec<IncidentSum
     Ok(runner.incidents(limit))
 }
 
+#[tauri::command]
+fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    match app.dialog().file().blocking_pick_folder() {
+        Some(path) => Ok(Some(path.to_string())),
+        None => Ok(None),
+    }
+}
+
 fn severity_from_level(level: rd_common::ResponseLevel) -> Severity {
     match level {
         rd_common::ResponseLevel::Monitor => Severity::Info,
@@ -449,13 +458,15 @@ pub fn build_app() -> tauri::App {
             config: Mutex::new(config),
         })
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .invoke_handler(tauri::generate_handler![
             load_config,
             save_config,
             start_protection,
             stop_protection,
             get_status,
-            get_incidents
+            get_incidents,
+            select_directory
         ])
         .setup(|app| {
             build_tray_menu(app)?;

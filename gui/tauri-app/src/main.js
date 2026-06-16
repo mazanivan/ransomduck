@@ -17,6 +17,7 @@ const els = {
   canaryNames: document.querySelector("#canary-names"),
   webhook: document.querySelector("#webhook"),
   saveBtn: document.querySelector("#save-btn"),
+  browseBtn: document.querySelector("#browse-btn"),
   startBtn: document.querySelector("#start-btn"),
   stopBtn: document.querySelector("#stop-btn"),
   info: document.querySelector("#info"),
@@ -173,6 +174,16 @@ window.addEventListener("DOMContentLoaded", async () => {
   });
 
   els.saveBtn.addEventListener("click", saveConfig);
+  els.browseBtn.addEventListener("click", async () => {
+    try {
+      const path = await invoke("select_directory");
+      if (path) {
+        els.watchPath.value = path;
+      }
+    } catch (e) {
+      els.info.textContent = "Failed to pick folder: " + e;
+    }
+  });
   els.startBtn.addEventListener("click", startProtection);
   els.stopBtn.addEventListener("click", stopProtection);
 });

@@ -22,9 +22,12 @@
 
       <section class="card controls-card">
         <div class="controls-row">
-          <div class="input-group">
+          <div class="input-group folder-group">
             <label for="watch-path">Protected folder</label>
-            <input id="watch-path" type="text" placeholder="/home/you/Documents" />
+            <div class="folder-input-row">
+              <input id="watch-path" type="text" placeholder="/home/you/Documents" />
+              <button id="browse-btn" type="button" class="secondary">Browse</button>
+            </div>
           </div>
           <div class="input-group short">
             <label for="cooldown">Cooldown (s)</label>
