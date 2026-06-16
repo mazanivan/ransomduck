@@ -389,3 +389,47 @@ cd ../..
 3. Build `.rpm` installer for Fedora.
 4. Windows process-attribution adapter.
 
+---
+
+## 2026-06-16 — Custom duck icon
+
+### Goal
+Replace the default Tauri icon with a custom RansomDuck-branded duck icon.
+
+### What changed
+1. **`gui/tauri-app/src-tauri/icons/generate_icon.py`** (new)
+   - Python/Pillow script that draws a simple duck on a blue circular background.
+   - Outputs a 1024x1024 `icon.png`.
+
+2. **Icon set regenerated**
+   - Ran `tauri icon icons/icon.png` to regenerate all platform sizes: 32x32, 128x128, 256x256, icon.ico, icon.icns, etc.
+   - Removed the generated `android/` and `ios/` directories because the MVP targets desktop only.
+
+3. **`install.sh`**
+   - Uses the absolute path to the installed PNG icon.
+   - Refreshes `gtk-update-icon-cache` and `xdg-desktop-menu` so the icon appears in the menu immediately.
+
+### How to regenerate the icon
+```bash
+cd gui/tauri-app/src-tauri/icons
+python3 generate_icon.py
+npx tauri icon icons/icon.png
+```
+
+### Results
+- `cargo test --workspace` passes.
+- `npm run tauri build` succeeds.
+- `./install.sh` installs the app with the new duck icon.
+
+### Known limitations
+- No process containment yet (kill/suspend) – detection only.
+- `/proc/*/fd` attribution is still timing-sensitive.
+- Linux only; Windows/macOS adapters are on the roadmap.
+- Canary cleanup relies on graceful shutdown; SIGKILL can leave decoy files behind.
+
+### Next steps
+1. Implement containment: kill/suspend suspicious process.
+2. Improve Linux attribution with `fanotify`.
+3. Build `.rpm` installer for Fedora.
+4. Windows process-attribution adapter.
+
