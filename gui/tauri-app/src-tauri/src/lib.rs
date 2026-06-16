@@ -376,11 +376,14 @@ fn get_incidents(state: State<AppState>, limit: usize) -> Result<Vec<IncidentSum
 }
 
 #[tauri::command]
-fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
-    match app.dialog().file().blocking_pick_folder() {
-        Some(path) => Ok(Some(path.to_string())),
-        None => Ok(None),
-    }
+async fn select_directory(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    let (tx, rx) = tokio::sync::oneshot::channel();
+    app.dialog().file().pick_folder(move |path| {
+        let _ = tx.send(path);
+    });
+    rx.await
+        .map_err(|e| e.to_string())
+        .map(|path| path.map(|p| p.to_string()))
 }
 
 fn severity_from_level(level: rd_common::ResponseLevel) -> Severity {
