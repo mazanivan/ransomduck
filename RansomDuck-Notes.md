@@ -462,9 +462,43 @@ containment_threshold = "restrict"
 - Linux only for now; Windows/macOS return a not-implemented action.
 - Process attribution is still timing-sensitive `/proc/*/fd` scanning.
 
+---
+
+## 2026-06-17 — install.sh auto-builds release binary when missing
+
+### Goal
+Make the end-user installation as simple as possible on Linux: run `./install.sh` and it builds the GUI release binary automatically if it is not already present.
+
+### What changed
+1. **`install.sh`**
+   - If `target/release/ransomduck-tray` does not exist, the script now builds it automatically.
+   - Uses the bundled Node.js under `.node/bin/` when available; otherwise falls back to system `node`/`npm`.
+   - Runs `npm install` and `npm run tauri build` inside `gui/tauri-app/`.
+   - Added `build_binary()` helper with clear error messages if Node.js/npm are missing.
+   - Still copies the binary, icon, and `.desktop` entry to `~/.local/` as before.
+
+2. **`README.md`**
+   - Updated the "Install and run as a normal user" section: removed the requirement to run `npm run tauri build` first; `install.sh` handles it.
+
+### How it works
+```bash
+cd /home/diego/Documents/Projects/interesting-ideas/ransomduck
+./install.sh
+ransomduck-tray
+```
+If `target/release/ransomduck-tray` is missing, the script builds it before installing.
+
+### Results
+- Verified by deleting `target/release/ransomduck-tray`, running `./install.sh`, and confirming it rebuilt and installed successfully.
+- Installed binary launches without `localhost: Connection refused` error.
+
+### Known limitations
+- `install.sh` remains Linux-only (uses bash, `.desktop` entries, GTK/XDG utilities).
+- Requires system Tauri dependencies on Fedora (e.g. `webkit2gtk4.1-devel`) if building from source.
+
 ### Next steps
 1. Improve Linux attribution with `fanotify`.
 2. Build `.rpm` installer for Fedora.
 3. Windows process-attribution adapter.
-4. Optional: configurable containment threshold so `kill` can be triggered at `Restrict` level when explicitly requested.
+4. macOS process-attribution adapter.
 
